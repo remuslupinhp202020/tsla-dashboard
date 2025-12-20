@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>$TSLA Dashboard</title>
+    <title>TSLA Dashboard</title>
     <!-- Import Plotly for the Graph -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     
@@ -162,7 +162,7 @@
 <body>
 
     <header>
-        <h1>$TSLA DASHBOARD</h1>
+        <h1>TSLA DASHBOARD</h1>
         
         <div class="status-bar">
             <span id="last-data-date">Latest Data: Loading...</span>
@@ -192,13 +192,12 @@
     <div id="view-news" class="view-section">
         <div class="news-container">
             <div class="x-links">
-                <!-- Row 1 -->
                 <a href="https://twitter.com/search?q=%24TSLA%20min_faves%3A500&src=typed_query&f=live" target="_blank" class="x-btn"><span>⚡ Top TSLA Tweets</span></a>
                 <a href="https://twitter.com/elonmusk" target="_blank" class="x-btn"><span>🚀 Elon Musk</span></a>
                 <a href="https://twitter.com/Tesla" target="_blank" class="x-btn"><span>🚗 Official Tesla</span></a>
-                <!-- FORCE LINE BREAK -->
+
                 <div style="width: 100%;"></div>
-                <!-- Row 2 -->
+
                 <a href="https://twitter.com/GaryBlack00" target="_blank" class="x-btn"><span>Gary Black</span></a>
                 <a href="https://twitter.com/TroyTeslike" target="_blank" class="x-btn"><span>Troy Teslike</span></a>
                 <a href="https://x.com/wholemars" target="_blank" class="x-btn"><span>Whole Mars</span></a>
@@ -229,6 +228,7 @@
             if (tabName === 'graph') renderChart(globalPriceData);
         }
 
+        // --- FETCH PRICE (Uses Apps Script - Works Fine) ---
         async function fetchPrice() {
             try {
                 const response = await fetch(API_URL + '?t=' + new Date().getTime()); 
@@ -240,15 +240,58 @@
             } catch (error) { console.error(error); }
         }
 
+        // --- FETCH NEWS (BYPASSING APPS SCRIPT) ---
         async function fetchNews() {
-            const newsContainer = document.getElementById('app-news');
-            if(newsContainer.innerHTML === '') newsContainer.innerHTML = '<div style="text-align:center;color:#999;margin-top:20px;">Loading News...</div>';
+            const container = document.getElementById('app-news');
+            if(container.innerHTML === '') container.innerHTML = '<div style="text-align:center;color:#999;margin-top:20px;">Loading News via Public API...</div>';
+            
+            // We use rss2json.com to convert RSS to JSON directly in browser
+            // No Google Permissions needed!
+            const sources = [
+                { url: 'https://finance.yahoo.com/rss/headline?s=TSLA', name: 'Yahoo Finance' },
+                { url: 'https://feeds.contenthub.benzinga.com/tickers/TSLA', name: 'Benzinga' },
+                { url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664', name: 'CNBC Finance' }
+            ];
+
+            let allArticles = [];
+
             try {
-                const response = await fetch(API_URL + '?type=news&t=' + new Date().getTime()); 
-                const data = await response.json();
-                renderNews(data);
+                // Fetch all sources in parallel
+                const promises = sources.map(source => 
+                    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(source.url)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data.status === 'ok') {
+                            return data.items.map(item => ({
+                                title: item.title,
+                                link: item.link,
+                                date: item.pubDate,
+                                source: source.name,
+                                timestamp: new Date(item.pubDate).getTime()
+                            }));
+                        }
+                        return [];
+                    })
+                    .catch(() => []) // Ignore errors from individual feeds
+                );
+
+                const results = await Promise.all(promises);
+                
+                // Combine all results
+                results.forEach(articles => {
+                    allArticles = [...allArticles, ...articles];
+                });
+
+                // Sort by Newest
+                allArticles.sort((a, b) => b.timestamp - a.timestamp);
+
+                renderNews(allArticles);
                 document.getElementById('refresh-btn').innerText = '↻ Refresh';
-            } catch (error) { console.error(error); }
+
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = '<div style="text-align:center;color:red;">Error loading news.</div>';
+            }
         }
 
         function renderPrice(data) {
@@ -306,39 +349,39 @@
         function renderNews(data) {
             const container = document.getElementById('app-news');
             container.innerHTML = '';
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div style="text-align:center;">No news articles found.</div>';
+                return;
+            }
+
             data.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'news-card';
-                card.innerHTML = `<div class="news-source">${item.source} • ${item.date}</div><div class="news-title">${item.title}</div><a href="${item.link}" target="_blank" class="read-btn">Read Article →</a>`;
+                // Format Date nicely
+                const d = new Date(item.date);
+                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+
+                card.innerHTML = `<div class="news-source">${item.source} • ${dateStr}</div><div class="news-title">${item.title}</div><a href="${item.link}" target="_blank" class="read-btn">Read Article →</a>`;
                 container.appendChild(card);
             });
         }
 
-        // --- UPDATED GREEN CHART ---
         function renderChart(data) {
             if (!data || data.length === 0) return;
-
             const chartData = [...data].sort((a, b) => new Date(a.Date) - new Date(b.Date));
             const xValues = chartData.map(d => d.Date);
             const yValues = chartData.map(d => d.Close);
-
             const trace = {
-                x: xValues,
-                y: yValues,
-                type: 'scatter',
-                mode: 'lines',
-                line: { color: '#27ae60', width: 2 }, // GREEN LINE
-                fill: 'tozeroy',
-                fillcolor: 'rgba(39, 174, 96, 0.1)' // LIGHT GREEN FILL
+                x: xValues, y: yValues, type: 'scatter', mode: 'lines',
+                line: { color: '#27ae60', width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(39, 174, 96, 0.1)'
             };
-
             const layout = {
                 title: false,
                 xaxis: {
                     type: 'date',
                     rangeselector: {
-                        x: 0,
-                        y: 1.1, // Positions buttons at the top
+                        x: 0, y: 1.1,
                         buttons: [
                             {count: 1, label: '1M', step: 'month', stepmode: 'backward'},
                             {count: 3, label: '3M', step: 'month', stepmode: 'backward'},
@@ -350,9 +393,8 @@
                     }
                 },
                 yaxis: { fixedrange: false, title: 'Price ($)' },
-                margin: { t: 50, r: 20, l: 40, b: 40 } // Added top margin for buttons
+                margin: { t: 50, r: 20, l: 40, b: 40 }
             };
-
             const config = { responsive: true, displayModeBar: false };
             Plotly.newPlot('chart-container', [trace], layout, config);
         }
