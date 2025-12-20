@@ -1,0 +1,30 @@
+name: Daily TSLA Update
+
+on:
+  schedule:
+    # Runs at 21:30 UTC every Monday through Friday
+    # (Approx 4:30 PM EST / 5:30 PM EDT)
+    - cron: '30 21 * * 1-5'
+  workflow_dispatch: # Allows you to run it manually from GitHub button
+
+jobs:
+  update-sheet:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Update Script
+        env:
+          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+        run: python main.py
