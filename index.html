@@ -11,6 +11,7 @@
             --card-grey: linear-gradient(135deg, #424242 0%, #2c2c2c 100%);
             --card-green: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
             --glow-green: 0 4px 15px rgba(46, 204, 113, 0.4);
+            --year-header-color: #f39c12;
         }
 
         body {
@@ -21,9 +22,14 @@
             padding: 20px;
         }
 
+        /* --- Header Section --- */
         header {
-            text-align: center;
-            margin-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 20px;
         }
 
         h1 {
@@ -32,11 +38,43 @@
             letter-spacing: 2px;
         }
 
-        p.subtitle {
+        .subtitle {
             color: #888;
-            margin-top: 10px;
+            margin: 5px 0 20px 0;
         }
 
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #aaa;
+            background: #252525;
+            padding: 10px 20px;
+            border-radius: 50px;
+        }
+
+        /* --- Refresh Button --- */
+        #refresh-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        #refresh-btn:hover {
+            background-color: #2980b9;
+        }
+
+        #refresh-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* --- Layout --- */
         #loading {
             text-align: center;
             font-size: 1.2rem;
@@ -44,63 +82,62 @@
             margin-top: 50px;
         }
 
-        /* The Grid Container */
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 15px;
-            max-width: 1200px;
-            margin: 0 auto;
+        /* Year Section */
+        .year-section {
+            margin-bottom: 40px;
         }
 
-        /* The Data Card */
+        .year-header {
+            font-size: 1.8rem;
+            color: var(--year-header-color);
+            border-left: 4px solid var(--year-header-color);
+            padding-left: 15px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        /* Grid */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 12px;
+        }
+
+        /* Cards */
         .card {
             background: var(--card-grey);
-            border-radius: 8px;
-            padding: 15px;
+            border-radius: 6px;
+            padding: 12px;
             text-align: center;
             transition: transform 0.2s;
             border: 1px solid #444;
+            position: relative;
         }
 
         .card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
+            z-index: 10;
         }
 
-        /* BUY SIGNAL STYLE (Monthly Low) */
         .card.buy-signal {
             background: var(--card-green);
             box-shadow: var(--glow-green);
             border: 1px solid #2ecc71;
-            font-weight: bold;
             color: #fff;
         }
 
-        .date {
-            font-size: 0.8rem;
-            margin-bottom: 5px;
-            opacity: 0.8;
-        }
-
-        .price {
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-
+        .date { font-size: 0.75rem; margin-bottom: 4px; opacity: 0.8; }
+        .price { font-size: 1.1rem; font-weight: 600; }
+        
         .tag {
             font-size: 0.6rem;
             text-transform: uppercase;
-            margin-top: 5px;
-            display: none; /* Hidden by default */
+            margin-top: 4px;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 3px;
+            padding: 2px 4px;
+            display: inline-block;
         }
-        
-        .card.buy-signal .tag {
-            display: block;
-            background-color: rgba(255,255,255,0.2);
-            border-radius: 4px;
-            padding: 2px 5px;
-        }
-
     </style>
 </head>
 <body>
@@ -108,63 +145,106 @@
     <header>
         <h1>TSLA DASHBOARD</h1>
         <p class="subtitle">Visualizing Monthly Lows (Buy Signals)</p>
+        
+        <div class="status-bar">
+            <span id="last-data-date">Latest Data: Loading...</span>
+            <button id="refresh-btn" onclick="fetchData()">↻ Refresh Data</button>
+        </div>
     </header>
 
     <div id="loading">Fetching data from Google Sheets...</div>
-    <div class="grid-container" id="app"></div>
+    <div id="app"></div>
 
     <script>
-        // Your specific Web App URL
         const API_URL = 'https://script.google.com/macros/s/AKfycbzUOHMtxnPtKYhCz6ZaT-PdV72FAQRVeTOaKzyJsd3Tor-ROjRd7sUuwK9Y-3sC7P7m/exec';
 
         async function fetchData() {
+            // Show Loading State
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('app').innerHTML = ''; 
+            document.getElementById('refresh-btn').innerText = 'Loading...';
+
             try {
-                const response = await fetch(API_URL);
+                // Add a timestamp param to prevent browser caching
+                const response = await fetch(API_URL + '?t=' + new Date().getTime());
                 const data = await response.json();
                 
-                // Remove loading text
                 document.getElementById('loading').style.display = 'none';
+                document.getElementById('refresh-btn').innerText = '↻ Refresh Data';
                 
-                renderData(data);
+                processAndRender(data);
+
             } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('loading').innerText = 'Error loading data. Please check console.';
+                document.getElementById('loading').innerText = 'Error loading data.';
+                document.getElementById('refresh-btn').innerText = 'Retry';
             }
         }
 
-        function renderData(data) {
+        function processAndRender(data) {
             const container = document.getElementById('app');
-            
-            // Optional: Reverse data to show newest first? 
-            // Currently showing Oldest -> Newest (Chronological)
-            // Uncomment the next line if you want Newest at the top:
-            // data.reverse(); 
+            const lastDataLabel = document.getElementById('last-data-date');
 
+            // 1. Sort Newest to Oldest (Descending)
+            // We assume Date format is YYYY-MM-DD which sorts nicely as strings
+            data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+
+            // Update "Latest Data" label
+            if (data.length > 0) {
+                lastDataLabel.innerText = `Latest Market Data: ${data[0].Date}`;
+            }
+
+            // 2. Group by Year
+            const groupedData = {};
             data.forEach(item => {
-                const card = document.createElement('div');
-                
-                // Base class
-                card.className = 'card';
-                
-                // Check if it is a Monthly Low
-                const isLow = item.Is_Low === "TRUE";
-                
-                if (isLow) {
-                    card.classList.add('buy-signal');
+                const year = item.Date.substring(0, 4); // Extract "2024" from "2024-01-01"
+                if (!groupedData[year]) {
+                    groupedData[year] = [];
                 }
+                groupedData[year].push(item);
+            });
 
-                // Format Date (assuming YYYY-MM-DD string from API)
-                // We create a Date object to format it nicely
-                const dateObj = new Date(item.Date);
-                const dateString = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+            // 3. Render Groups (Years Descending)
+            // Object.keys gives ["2020", "2021"...], we reverse to get ["2025", "2024"...]
+            const years = Object.keys(groupedData).sort().reverse();
 
-                card.innerHTML = `
-                    <div class="date">${dateString}</div>
-                    <div class="price">$${item.Close}</div>
-                    ${isLow ? '<div class="tag">M-Low</div>' : ''}
-                `;
+            years.forEach(year => {
+                // Create Year Section
+                const yearSection = document.createElement('div');
+                yearSection.className = 'year-section';
 
-                container.appendChild(card);
+                // Header
+                const header = document.createElement('div');
+                header.className = 'year-header';
+                header.innerText = year;
+                yearSection.appendChild(header);
+
+                // Grid
+                const grid = document.createElement('div');
+                grid.className = 'grid-container';
+
+                // Add Cards to Grid
+                groupedData[year].forEach(item => {
+                    const card = document.createElement('div');
+                    const isLow = item.Is_Low === "TRUE";
+
+                    card.className = isLow ? 'card buy-signal' : 'card';
+                    
+                    // Format Date for display (e.g. "Jan 5")
+                    // Note: Adding "T00:00" fixes timezone offset issues in some browsers
+                    const dateObj = new Date(item.Date + 'T00:00'); 
+                    const dateString = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                    card.innerHTML = `
+                        <div class="date">${dateString}</div>
+                        <div class="price">$${item.Close}</div>
+                        ${isLow ? '<div class="tag">Low</div>' : ''}
+                    `;
+                    grid.appendChild(card);
+                });
+
+                yearSection.appendChild(grid);
+                container.appendChild(yearSection);
             });
         }
 
