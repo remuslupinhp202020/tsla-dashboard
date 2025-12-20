@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TSLA Dashboard</title>
+    <!-- Import Plotly for the Graph -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
     <style>
         :root {
             /* Tesla Light Theme */
@@ -15,6 +18,10 @@
             --card-green-bg: #27ae60;
             --card-green-text: #ffffff;
             --glow-green: 0 4px 15px rgba(39, 174, 96, 0.3);
+            
+            /* Arrow Colors */
+            --arrow-up: #27ae60;
+            --arrow-down: #e74c3c;
         }
 
         body {
@@ -37,7 +44,6 @@
 
         h1 { margin: 0; font-size: 2.2rem; font-weight: 800; letter-spacing: 1px; }
 
-        /* RESTORED: Status Bar */
         .status-bar {
             display: flex;
             gap: 15px;
@@ -100,7 +106,7 @@
             display: inline-block; padding-right: 20px; margin-bottom: 20px; font-weight: 900;
         }
         .grid-container {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px;
         }
         .card {
             background: var(--card-bg); border: 1px solid var(--card-border);
@@ -116,33 +122,37 @@
         .card.buy-signal { background: var(--card-green-bg); color: var(--card-green-text); box-shadow: var(--glow-green); }
         .card.buy-signal.month-start { border-left-color: #145a32; }
         .card.buy-signal.month-start::before { background: #145a32; }
+        
         .date { font-size: 0.75rem; opacity: 0.9; margin-bottom: 4px; }
-        .price { font-size: 1.2rem; font-weight: 700; }
+        .price { font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; }
         .tag { font-size: 0.6rem; background: rgba(255,255,255,0.3); padding: 2px 5px; border-radius: 3px; display: inline-block; margin-top: 5px; }
+
+        /* ARROW STYLES */
+        .arrow { font-size: 0.9rem; }
+        .arrow-up { color: var(--arrow-up); }
+        .arrow-down { color: var(--arrow-down); }
+        
+        /* Force White Arrows on Buy Signal Cards */
+        .card.buy-signal .arrow-up, .card.buy-signal .arrow-down { color: #ffffff !important; }
+
 
         /* --- NEWS STYLES --- */
         .news-container { max-width: 800px; margin: 0 auto; }
-        
-        .x-links {
-            display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px;
-        }
-        
+        .x-links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
         .x-btn {
-            background: #000; color: #fff; text-decoration: none;
-            padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 600;
-            display: flex; align-items: center; gap: 8px; transition: transform 0.2s;
+            background: #000; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: transform 0.2s;
         }
         .x-btn:hover { transform: scale(1.05); }
-
         .news-card {
-            background: white; border: 1px solid #eee; border-radius: 8px;
-            padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-            transition: border-color 0.2s;
+            background: white; border: 1px solid #eee; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); transition: border-color 0.2s;
         }
         .news-card:hover { border-color: var(--tesla-red); }
         .news-source { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
         .news-title { font-size: 1.1rem; font-weight: 600; color: #222; margin: 0 0 10px 0; line-height: 1.4; }
         .read-btn { display: inline-block; margin-top: 10px; text-decoration: none; color: var(--tesla-red); font-weight: bold; font-size: 0.9rem; }
+
+        /* --- GRAPH STYLES --- */
+        #chart-container { width: 100%; height: 600px; margin-top: 20px; }
 
         #loading { text-align: center; margin-top: 50px; color: #666; font-size: 1.2rem; }
     </style>
@@ -152,7 +162,6 @@
     <header>
         <h1>TSLA DASHBOARD</h1>
         
-        <!-- RESTORED: Status Bar -->
         <div class="status-bar">
             <span id="last-data-date">Latest Data: Loading...</span>
             <button id="refresh-btn" onclick="refreshAll()">↻ Refresh</button>
@@ -160,6 +169,7 @@
 
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('price')">Price Grid</button>
+            <button class="tab-btn" onclick="switchTab('graph')">Price Graph</button>
             <button class="tab-btn" onclick="switchTab('news')">News & Social</button>
         </div>
     </header>
@@ -171,79 +181,61 @@
         <div id="app-price"></div>
     </div>
 
-    <!-- TAB 2: NEWS & SOCIAL -->
+    <!-- TAB 2: PRICE GRAPH -->
+    <div id="view-graph" class="view-section">
+        <div id="chart-container"></div>
+    </div>
+
+    <!-- TAB 3: NEWS & SOCIAL -->
     <div id="view-news" class="view-section">
         <div class="news-container">
-            
-            <!-- X (Twitter) Smart Links -->
             <div class="x-links">
-                <a href="https://twitter.com/search?q=%24TSLA%20min_faves%3A500&src=typed_query&f=live" target="_blank" class="x-btn">
-                    <span>⚡ Top TSLA Tweets</span>
-                </a>
-                <a href="https://twitter.com/elonmusk" target="_blank" class="x-btn">
-                    <span>🚀 Elon Musk</span>
-                </a>
-                <a href="https://twitter.com/Tesla" target="_blank" class="x-btn">
-                    <span>🚗 Official Tesla</span>
-                </a>
-                
-                <!-- ADD MORE EXPERTS HERE -->
-                <a href="https://twitter.com/GaryBlack00" target="_blank" class="x-btn">
-                    <span>Gary Black</span>
-                </a>
-                <a href="https://twitter.com/TroyTeslike" target="_blank" class="x-btn">
-                    <span>Troy Teslike</span>
-                </a>
-
-                <a href="https://x.com/wholemars" target="_blank" class="x-btn">
-                    <span>Whole Mars</span>
-                </a>
-
-                <a href="https://twitter.com/SawyerMerritt" target="_blank" class="x-btn">
-                    <span>Sawyer Merritt</span>
-                </a>
-
-                <a href="https://x.com/TeslaBoomerMama" target="_blank" class="x-btn">
-                    <span>AleXandra Merz</span>
-                </a>
-
+                <a href="https://twitter.com/search?q=%24TSLA%20min_faves%3A500&src=typed_query&f=live" target="_blank" class="x-btn"><span>⚡ Top TSLA Tweets</span></a>
+                <a href="https://twitter.com/elonmusk" target="_blank" class="x-btn"><span>🚀 Elon Musk</span></a>
+                <a href="https://twitter.com/Tesla" target="_blank" class="x-btn"><span>🚗 Official Tesla</span></a>
+                <a href="https://twitter.com/GaryBlack00" target="_blank" class="x-btn"><span>Gary Black</span></a>
+                <a href="https://twitter.com/TroyTeslike" target="_blank" class="x-btn"><span>Troy Teslike</span></a>
+                <a href="https://x.com/wholemars" target="_blank" class="x-btn"><span>Whole Mars</span></a>
+                <a href="https://twitter.com/SawyerMerritt" target="_blank" class="x-btn"><span>Sawyer Merritt</span></a>
+                <a href="https://x.com/TeslaBoomerMama" target="_blank" class="x-btn"><span>AleXandra Merz</span></a>
             </div>
-
-            <!-- News Feed -->
             <div id="app-news"></div>
         </div>
     </div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzUOHMtxnPtKYhCz6ZaT-PdV72FAQRVeTOaKzyJsd3Tor-ROjRd7sUuwK9Y-3sC7P7m/exec';
+        let globalPriceData = []; // Store data globally so we don't re-fetch for chart
 
-        // --- REFRESH BUTTON LOGIC ---
         function refreshAll() {
             document.getElementById('refresh-btn').innerText = 'Loading...';
-            // We refresh both data sources
             fetchPrice();
             fetchNews();
         }
 
-        // --- TAB LOGIC ---
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             document.querySelectorAll('.view-section').forEach(view => view.classList.remove('active'));
             document.getElementById('view-' + tabName).classList.add('active');
 
-            if (tabName === 'news' && document.getElementById('app-news').innerHTML === '') {
-                fetchNews();
+            if (tabName === 'news' && document.getElementById('app-news').innerHTML === '') fetchNews();
+            
+            // If switching to Graph, render it
+            if (tabName === 'graph') {
+                renderChart(globalPriceData);
             }
         }
 
         // --- FETCH PRICE ---
         async function fetchPrice() {
             try {
-                // Add timestamp to prevent caching
                 const response = await fetch(API_URL + '?t=' + new Date().getTime()); 
                 const data = await response.json();
                 
+                // Store globally for the Chart tab
+                globalPriceData = data; 
+
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('refresh-btn').innerText = '↻ Refresh';
                 
@@ -255,7 +247,6 @@
         async function fetchNews() {
             const newsContainer = document.getElementById('app-news');
             if(newsContainer.innerHTML === '') newsContainer.innerHTML = '<div style="text-align:center;color:#999;margin-top:20px;">Loading News...</div>';
-            
             try {
                 const response = await fetch(API_URL + '?type=news&t=' + new Date().getTime()); 
                 const data = await response.json();
@@ -264,11 +255,12 @@
             } catch (error) { console.error(error); }
         }
 
-        // --- RENDER PRICE ---
+        // --- RENDER PRICE GRID ---
         function renderPrice(data) {
             const container = document.getElementById('app-price');
             const lastDataLabel = document.getElementById('last-data-date');
             
+            // Sort: Newest First
             data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
             if (data.length > 0) lastDataLabel.innerText = `Latest Data: ${data[0].Date}`;
 
@@ -280,14 +272,16 @@
             });
             const years = Object.keys(groupedData).sort().reverse();
             
-            container.innerHTML = ''; // Clear previous data
+            container.innerHTML = ''; 
             years.forEach(year => {
                 const yearSec = document.createElement('div'); yearSec.className = 'year-section';
                 yearSec.innerHTML = `<div class="year-header">${year}</div>`;
                 const grid = document.createElement('div'); grid.className = 'grid-container';
                 
                 let currentMonth = null;
-                groupedData[year].forEach(item => {
+                
+                // Loop through items in this year
+                groupedData[year].forEach((item, index) => {
                     const itemMonth = item.Date.substring(5, 7);
                     const card = document.createElement('div');
                     let classes = ['card'];
@@ -298,8 +292,39 @@
                     }
                     currentMonth = itemMonth;
                     card.className = classes.join(' ');
+                    
                     const dStr = new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    card.innerHTML = `<div class="date">${dStr}</div><div class="price">$${item.Close}</div>${item.Is_Low === "TRUE" ? '<div class="tag">Low</div>' : ''}`;
+                    
+                    // --- ARROW LOGIC ---
+                    // Since data is sorted Newest to Oldest:
+                    // Previous Day is index + 1
+                    let arrowHtml = '';
+                    
+                    // We need to find the correct index in the MAIN data array, not just the grouped year array
+                    // But easier way: data is already sorted. Let's find 'item' in 'data'
+                    const mainIndex = data.indexOf(item);
+                    
+                    if (mainIndex < data.length - 1) {
+                        const prevDayPrice = data[mainIndex + 1].Close;
+                        const diff = item.Close - prevDayPrice;
+                        
+                        if (diff > 0) {
+                            arrowHtml = '<span class="arrow arrow-up">▲</span>';
+                        } else if (diff < 0) {
+                            arrowHtml = '<span class="arrow arrow-down">▼</span>';
+                        } else {
+                            arrowHtml = '<span class="arrow" style="color:#aaa">-</span>';
+                        }
+                    }
+
+                    card.innerHTML = `
+                        <div class="date">${dStr}</div>
+                        <div class="price">
+                            $${item.Close}
+                            ${arrowHtml}
+                        </div>
+                        ${item.Is_Low === "TRUE" ? '<div class="tag">Low</div>' : ''}
+                    `;
                     grid.appendChild(card);
                 });
                 yearSec.appendChild(grid); container.appendChild(yearSec);
@@ -310,7 +335,6 @@
         function renderNews(data) {
             const container = document.getElementById('app-news');
             container.innerHTML = '';
-            
             data.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'news-card';
@@ -321,6 +345,44 @@
                 `;
                 container.appendChild(card);
             });
+        }
+
+        // --- RENDER GRAPH (PLOTLY) ---
+        function renderChart(data) {
+            if (!data || data.length === 0) return;
+
+            // Sort Oldest to Newest for the Chart (Plotly prefers chronological)
+            const chartData = [...data].sort((a, b) => new Date(a.Date) - new Date(b.Date));
+            
+            const xValues = chartData.map(d => d.Date);
+            const yValues = chartData.map(d => d.Close);
+
+            const trace = {
+                x: xValues,
+                y: yValues,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#e82127', width: 2 }, // Tesla Red line
+                fill: 'tozeroy', // Fill area under line
+                fillcolor: 'rgba(232, 33, 39, 0.1)' 
+            };
+
+            const layout = {
+                title: false,
+                xaxis: {
+                    rangeslider: { visible: true }, // The Google-style slider
+                    type: 'date'
+                },
+                yaxis: {
+                    fixedrange: false,
+                    title: 'Price ($)'
+                },
+                margin: { t: 20, r: 20, l: 40, b: 40 }
+            };
+
+            const config = { responsive: true, displayModeBar: false };
+
+            Plotly.newPlot('chart-container', [trace], layout, config);
         }
 
         // Initial Load
