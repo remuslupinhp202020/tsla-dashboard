@@ -1,4 +1,302 @@
-// --- FETCH NEWS (Expanded Sources) ---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSLA Dashboard</title>
+    <!-- Import Plotly for the Graph -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <style>
+        :root {
+            /* Tesla Light Theme */
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --tesla-red: #e82127; 
+            
+            /* Green Theme */
+            --tesla-green: #27ae60; 
+            --tesla-green-light: rgba(39, 174, 96, 0.1);
+            
+            --card-bg: #f8f9fa;
+            --card-border: #e9ecef;
+            --card-green-bg: #27ae60;
+            --card-green-text: #ffffff;
+            --glow-green: 0 4px 15px rgba(39, 174, 96, 0.3);
+            
+            /* Arrow Colors */
+            --arrow-up: #27ae60;
+            --arrow-down: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* --- Header & Tabs --- */
+        header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+        }
+
+        h1 { margin: 0; font-size: 2.2rem; font-weight: 800; letter-spacing: 1px; }
+
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #666;
+            background: #f1f1f1;
+            padding: 8px 20px;
+            border-radius: 50px;
+            margin-top: 15px;
+        }
+
+        #refresh-btn {
+            background-color: var(--tesla-red);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+        }
+        #refresh-btn:hover { background-color: #c01c22; }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 25px;
+            border: 2px solid #ddd;
+            background: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            border-radius: 25px;
+            transition: all 0.2s;
+            color: #666;
+        }
+
+        .tab-btn.active {
+            background-color: var(--tesla-red);
+            border-color: var(--tesla-red);
+            color: white;
+            box-shadow: 0 4px 10px rgba(232, 33, 39, 0.3);
+        }
+
+        /* --- Content Views --- */
+        .view-section { display: none; width: 100%; }
+        .view-section.active { display: block; }
+
+        /* --- GRID STYLES (Price) --- */
+        .year-section { margin-bottom: 40px; }
+        .year-header {
+            font-size: 2rem; color: var(--tesla-red);
+            border-bottom: 3px solid var(--tesla-red);
+            display: inline-block; padding-right: 20px; margin-bottom: 20px; font-weight: 900;
+        }
+        .grid-container {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px;
+        }
+        .card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 6px; padding: 12px 8px; text-align: center;
+            transition: transform 0.2s; position: relative;
+        }
+        .card:hover { transform: translateY(-3px); z-index: 10; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .card.month-start { border-left: 6px solid #999; background: #eef; }
+        .card.month-start::before {
+            content: attr(data-month-name); position: absolute; top: -12px; left: -6px;
+            background: #999; color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 3px;
+        }
+        .card.buy-signal { background: var(--card-green-bg); color: var(--card-green-text); box-shadow: var(--glow-green); }
+        .card.buy-signal.month-start { border-left-color: #145a32; }
+        .card.buy-signal.month-start::before { background: #145a32; }
+        
+        .date { font-size: 0.75rem; opacity: 0.9; margin-bottom: 4px; }
+        .price { font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .tag { font-size: 0.6rem; background: rgba(255,255,255,0.3); padding: 2px 5px; border-radius: 3px; display: inline-block; margin-top: 5px; }
+
+        .arrow { font-size: 0.9rem; }
+        .arrow-up { color: var(--arrow-up); }
+        .arrow-down { color: var(--arrow-down); }
+        .card.buy-signal .arrow-up, .card.buy-signal .arrow-down { color: #ffffff !important; }
+
+        /* --- GRAPH STYLES --- */
+        #chart-container { width: 100%; height: 600px; margin-top: 20px; border: 1px solid #eee; border-radius: 8px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
+        /* --- NEWS STYLES (3xN GRID) --- */
+        .news-container { max-width: 1200px; margin: 0 auto; } /* Wider container */
+        
+        .x-links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
+        .x-btn {
+            background: #000; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: transform 0.2s;
+        }
+        .x-btn:hover { transform: scale(1.05); }
+
+        /* THE NEWS GRID */
+        #app-news {
+            display: grid;
+            gap: 20px;
+        }
+
+        /* Desktop: 3 Columns */
+        @media (min-width: 1024px) {
+            #app-news { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        /* Tablet: 2 Columns */
+        @media (max-width: 1023px) and (min-width: 768px) {
+            #app-news { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Mobile: 1 Column */
+        @media (max-width: 767px) {
+            #app-news { grid-template-columns: 1fr; }
+        }
+
+        .news-card {
+            background: white; border: 1px solid #eee; border-radius: 8px; 
+            padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); 
+            transition: border-color 0.2s, transform 0.2s;
+            display: flex; flex-direction: column; justify-content: space-between;
+            height: 100%; /* Equal height */
+            box-sizing: border-box;
+        }
+        .news-card:hover { border-color: var(--tesla-red); transform: translateY(-3px); }
+        
+        .news-source { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .news-title { font-size: 1.1rem; font-weight: 600; color: #222; margin: 0 0 15px 0; line-height: 1.4; flex-grow: 1; }
+        .read-btn { display: inline-block; text-decoration: none; color: var(--tesla-red); font-weight: bold; font-size: 0.9rem; }
+
+        #loading { text-align: center; margin-top: 50px; color: #666; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>TSLA DASHBOARD</h1>
+        
+        <div class="status-bar">
+            <span id="last-data-date">Latest Data: Loading...</span>
+            <button id="refresh-btn" onclick="refreshAll()">↻ Refresh</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn" onclick="switchTab('price')" id="btn-price">Price Grid</button>
+            <button class="tab-btn" onclick="switchTab('graph')" id="btn-graph">Price Graph</button>
+            <button class="tab-btn" onclick="switchTab('news')" id="btn-news">News & Social</button>
+        </div>
+    </header>
+
+    <div id="loading">Fetching data...</div>
+
+    <!-- TAB 1: PRICE GRID -->
+    <div id="view-price" class="view-section">
+        <div id="app-price"></div>
+    </div>
+
+    <!-- TAB 2: PRICE GRAPH -->
+    <div id="view-graph" class="view-section">
+        <div id="chart-container"></div>
+    </div>
+
+    <!-- TAB 3: NEWS & SOCIAL -->
+    <div id="view-news" class="view-section">
+        <div class="news-container">
+            <div class="x-links">
+                <!-- Row 1 -->
+                <a href="https://twitter.com/search?q=%24TSLA%20min_faves%3A500&src=typed_query&f=live" target="_blank" class="x-btn"><span>⚡ Top TSLA Tweets</span></a>
+                <a href="https://twitter.com/elonmusk" target="_blank" class="x-btn"><span>🚀 Elon Musk</span></a>
+                <a href="https://twitter.com/Tesla" target="_blank" class="x-btn"><span>🚗 Official Tesla</span></a>
+                
+                <!-- Line Break -->
+                <div style="width: 100%;"></div>
+
+                <!-- Row 2 -->
+                <a href="https://twitter.com/GaryBlack00" target="_blank" class="x-btn"><span>Gary Black</span></a>
+                <a href="https://twitter.com/TroyTeslike" target="_blank" class="x-btn"><span>Troy Teslike</span></a>
+                <a href="https://x.com/wholemars" target="_blank" class="x-btn"><span>Whole Mars</span></a>
+                <a href="https://twitter.com/SawyerMerritt" target="_blank" class="x-btn"><span>Sawyer Merritt</span></a>
+                <a href="https://x.com/TeslaBoomerMama" target="_blank" class="x-btn"><span>AleXandra Merz</span></a>
+            </div>
+            
+            <div id="app-news"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzUOHMtxnPtKYhCz6ZaT-PdV72FAQRVeTOaKzyJsd3Tor-ROjRd7sUuwK9Y-3sC7P7m/exec';
+        let globalPriceData = []; 
+
+        // --- INIT: RESTORE TAB ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTab = localStorage.getItem('activeTab') || 'price';
+            switchTab(savedTab);
+            // Initial Data Fetch
+            refreshAll(); 
+        });
+
+        function refreshAll() {
+            document.getElementById('refresh-btn').innerText = 'Loading...';
+            // We launch both updates independently
+            fetchPrice();
+            fetchNews();
+        }
+
+        function switchTab(tabName) {
+            // 1. Save state
+            localStorage.setItem('activeTab', tabName);
+
+            // 2. Visual Update
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            const btn = document.getElementById('btn-' + tabName);
+            if (btn) btn.classList.add('active');
+
+            document.querySelectorAll('.view-section').forEach(view => view.classList.remove('active'));
+            document.getElementById('view-' + tabName).classList.add('active');
+
+            // 3. Conditional Rendering (Graph needs size recalculation often)
+            if (tabName === 'graph' && globalPriceData.length > 0) {
+                setTimeout(() => renderChart(globalPriceData), 50);
+            }
+        }
+
+        // --- FETCH PRICE ---
+        async function fetchPrice() {
+            try {
+                // Add timestamp to prevent caching
+                const response = await fetch(API_URL + '?t=' + new Date().getTime()); 
+                const data = await response.json();
+                globalPriceData = data; 
+                document.getElementById('loading').style.display = 'none';
+                
+                // If News is done, button can go back to normal
+                if (document.getElementById('app-news').innerHTML !== '') {
+                     document.getElementById('refresh-btn').innerText = '↻ Refresh';
+                }
+                
+                renderPrice(data);
+                if (localStorage.getItem('activeTab') === 'graph') renderChart(data);
+            } catch (error) { console.error(error); }
+        }
+
+        // --- FETCH NEWS (EXPANDED SOURCES) ---
         async function fetchNews() {
             const container = document.getElementById('app-news');
             // Only show loading if empty
@@ -6,14 +304,13 @@
                 container.innerHTML = '<div style="grid-column: 1/-1; text-align:center;color:#999;margin-top:20px;">Loading News via Public API...</div>';
             }
             
-            // EXPANDED SOURCE LIST
             const sources = [
                 // Major Finance
                 { url: 'https://finance.yahoo.com/rss/headline?s=TSLA', name: 'Yahoo Finance' },
                 { url: 'https://feeds.contenthub.benzinga.com/tickers/TSLA', name: 'Benzinga' },
                 { url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664', name: 'CNBC' },
                 
-                // EV & Tesla Specific (Great for deep dives)
+                // EV & Tesla Specific
                 { url: 'https://electrek.co/guides/tesla/feed/', name: 'Electrek' },
                 { url: 'https://insideevs.com/rss/articles/make/tesla/', name: 'InsideEVs' },
                 { url: 'https://www.teslarati.com/feed/', name: 'Teslarati' }
@@ -49,12 +346,12 @@
                 // Sort by Newest
                 allArticles.sort((a, b) => b.timestamp - a.timestamp);
 
-                // Filter out duplicates (sometimes Yahoo reposts Benzinga)
+                // Filter out duplicates (simple title check)
                 const uniqueArticles = [];
                 const seenTitles = new Set();
                 
                 allArticles.forEach(item => {
-                    const simplifiedTitle = item.title.toLowerCase().substring(0, 20); // Check first 20 chars
+                    const simplifiedTitle = item.title.toLowerCase().substring(0, 30); // Check first 30 chars
                     if (!seenTitles.has(simplifiedTitle)) {
                         seenTitles.add(simplifiedTitle);
                         uniqueArticles.push(item);
@@ -69,3 +366,112 @@
                 container.innerHTML = '<div style="grid-column: 1/-1; text-align:center;color:red;">Error loading news.</div>';
             }
         }
+
+        function renderPrice(data) {
+            const container = document.getElementById('app-price');
+            const lastDataLabel = document.getElementById('last-data-date');
+            data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+            if (data.length > 0) lastDataLabel.innerText = `Latest Data: ${data[0].Date}`;
+
+            const groupedData = {};
+            data.forEach(item => {
+                const year = item.Date.substring(0, 4);
+                if (!groupedData[year]) groupedData[year] = [];
+                groupedData[year].push(item);
+            });
+            const years = Object.keys(groupedData).sort().reverse();
+            
+            container.innerHTML = ''; 
+            years.forEach(year => {
+                const yearSec = document.createElement('div'); yearSec.className = 'year-section';
+                yearSec.innerHTML = `<div class="year-header">${year}</div>`;
+                const grid = document.createElement('div'); grid.className = 'grid-container';
+                
+                let currentMonth = null;
+                groupedData[year].forEach((item) => {
+                    const itemMonth = item.Date.substring(5, 7);
+                    const card = document.createElement('div');
+                    let classes = ['card'];
+                    if (item.Is_Low === "TRUE") classes.push('buy-signal');
+                    if (currentMonth && itemMonth !== currentMonth) {
+                        classes.push('month-start');
+                        card.setAttribute('data-month-name', new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short' }));
+                    }
+                    currentMonth = itemMonth;
+                    card.className = classes.join(' ');
+                    
+                    const dStr = new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    
+                    let arrowHtml = '';
+                    const mainIndex = data.indexOf(item);
+                    if (mainIndex < data.length - 1) {
+                        const prevDayPrice = data[mainIndex + 1].Close;
+                        const diff = item.Close - prevDayPrice;
+                        if (diff > 0) arrowHtml = '<span class="arrow arrow-up">▲</span>';
+                        else if (diff < 0) arrowHtml = '<span class="arrow arrow-down">▼</span>';
+                        else arrowHtml = '<span class="arrow" style="color:#aaa">-</span>';
+                    }
+
+                    card.innerHTML = `<div class="date">${dStr}</div><div class="price">$${item.Close} ${arrowHtml}</div>${item.Is_Low === "TRUE" ? '<div class="tag">Low</div>' : ''}`;
+                    grid.appendChild(card);
+                });
+                yearSec.appendChild(grid); container.appendChild(yearSec);
+            });
+        }
+
+        function renderNews(data) {
+            const container = document.getElementById('app-news');
+            container.innerHTML = '';
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align:center;">No news articles found.</div>';
+                return;
+            }
+
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'news-card';
+                // Clean HTML from title
+                const cleanTitle = item.title.replace(/<[^>]*>?/gm, ''); 
+                const d = new Date(item.date);
+                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+
+                card.innerHTML = `<div class="news-source">${item.source} • ${dateStr}</div><div class="news-title">${cleanTitle}</div><a href="${item.link}" target="_blank" class="read-btn">Read Article →</a>`;
+                container.appendChild(card);
+            });
+        }
+
+        function renderChart(data) {
+            if (!data || data.length === 0) return;
+            const chartData = [...data].sort((a, b) => new Date(a.Date) - new Date(b.Date));
+            const xValues = chartData.map(d => d.Date);
+            const yValues = chartData.map(d => d.Close);
+            const trace = {
+                x: xValues, y: yValues, type: 'scatter', mode: 'lines',
+                line: { color: '#27ae60', width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(39, 174, 96, 0.1)'
+            };
+            const layout = {
+                title: false,
+                xaxis: {
+                    type: 'date',
+                    rangeselector: {
+                        x: 0, y: 1.1,
+                        buttons: [
+                            {count: 1, label: '1M', step: 'month', stepmode: 'backward'},
+                            {count: 3, label: '3M', step: 'month', stepmode: 'backward'},
+                            {count: 6, label: '6M', step: 'month', stepmode: 'backward'},
+                            {count: 1, label: 'YTD', step: 'year', stepmode: 'todate'},
+                            {count: 1, label: '1Y', step: 'year', stepmode: 'backward'},
+                            {step: 'all', label: 'MAX'}
+                        ]
+                    }
+                },
+                yaxis: { fixedrange: false, title: 'Price ($)' },
+                margin: { t: 50, r: 20, l: 40, b: 40 }
+            };
+            const config = { responsive: true, displayModeBar: false };
+            Plotly.newPlot('chart-container', [trace], layout, config);
+        }
+    </script>
+</body>
+</html>
