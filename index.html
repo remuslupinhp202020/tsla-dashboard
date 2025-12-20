@@ -164,4 +164,155 @@
         </div>
     </header>
 
-    <div id="loading">Fetching d
+    <div id="loading">Fetching data...</div>
+
+    <!-- TAB 1: PRICE GRID -->
+    <div id="view-price" class="view-section active">
+        <div id="app-price"></div>
+    </div>
+
+    <!-- TAB 2: NEWS & SOCIAL -->
+    <div id="view-news" class="view-section">
+        <div class="news-container">
+            
+            <!-- X (Twitter) Smart Links -->
+            <div class="x-links">
+                <a href="https://twitter.com/search?q=%24TSLA%20min_faves%3A500&src=typed_query&f=live" target="_blank" class="x-btn">
+                    <span>⚡ Top TSLA Tweets</span>
+                </a>
+                <a href="https://twitter.com/elonmusk" target="_blank" class="x-btn">
+                    <span>🚀 Elon Musk</span>
+                </a>
+                <a href="https://twitter.com/Tesla" target="_blank" class="x-btn">
+                    <span>🚗 Official Tesla</span>
+                </a>
+                
+                <!-- ADD MORE EXPERTS HERE -->
+                <a href="https://twitter.com/GaryBlack00" target="_blank" class="x-btn">
+                    <span>Gary Black</span>
+                </a>
+                <a href="https://twitter.com/TroyTeslike" target="_blank" class="x-btn">
+                    <span>Troy Teslike</span>
+                </a>
+
+            </div>
+
+            <!-- News Feed -->
+            <div id="app-news"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzUOHMtxnPtKYhCz6ZaT-PdV72FAQRVeTOaKzyJsd3Tor-ROjRd7sUuwK9Y-3sC7P7m/exec';
+
+        // --- REFRESH BUTTON LOGIC ---
+        function refreshAll() {
+            document.getElementById('refresh-btn').innerText = 'Loading...';
+            // We refresh both data sources
+            fetchPrice();
+            fetchNews();
+        }
+
+        // --- TAB LOGIC ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.view-section').forEach(view => view.classList.remove('active'));
+            document.getElementById('view-' + tabName).classList.add('active');
+
+            if (tabName === 'news' && document.getElementById('app-news').innerHTML === '') {
+                fetchNews();
+            }
+        }
+
+        // --- FETCH PRICE ---
+        async function fetchPrice() {
+            try {
+                // Add timestamp to prevent caching
+                const response = await fetch(API_URL + '?t=' + new Date().getTime()); 
+                const data = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('refresh-btn').innerText = '↻ Refresh';
+                
+                renderPrice(data);
+            } catch (error) { console.error(error); }
+        }
+
+        // --- FETCH NEWS ---
+        async function fetchNews() {
+            const newsContainer = document.getElementById('app-news');
+            if(newsContainer.innerHTML === '') newsContainer.innerHTML = '<div style="text-align:center;color:#999;margin-top:20px;">Loading News...</div>';
+            
+            try {
+                const response = await fetch(API_URL + '?type=news&t=' + new Date().getTime()); 
+                const data = await response.json();
+                renderNews(data);
+                document.getElementById('refresh-btn').innerText = '↻ Refresh';
+            } catch (error) { console.error(error); }
+        }
+
+        // --- RENDER PRICE ---
+        function renderPrice(data) {
+            const container = document.getElementById('app-price');
+            const lastDataLabel = document.getElementById('last-data-date');
+            
+            data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+            if (data.length > 0) lastDataLabel.innerText = `Latest Data: ${data[0].Date}`;
+
+            const groupedData = {};
+            data.forEach(item => {
+                const year = item.Date.substring(0, 4);
+                if (!groupedData[year]) groupedData[year] = [];
+                groupedData[year].push(item);
+            });
+            const years = Object.keys(groupedData).sort().reverse();
+            
+            container.innerHTML = ''; // Clear previous data
+            years.forEach(year => {
+                const yearSec = document.createElement('div'); yearSec.className = 'year-section';
+                yearSec.innerHTML = `<div class="year-header">${year}</div>`;
+                const grid = document.createElement('div'); grid.className = 'grid-container';
+                
+                let currentMonth = null;
+                groupedData[year].forEach(item => {
+                    const itemMonth = item.Date.substring(5, 7);
+                    const card = document.createElement('div');
+                    let classes = ['card'];
+                    if (item.Is_Low === "TRUE") classes.push('buy-signal');
+                    if (currentMonth && itemMonth !== currentMonth) {
+                        classes.push('month-start');
+                        card.setAttribute('data-month-name', new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short' }));
+                    }
+                    currentMonth = itemMonth;
+                    card.className = classes.join(' ');
+                    const dStr = new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    card.innerHTML = `<div class="date">${dStr}</div><div class="price">$${item.Close}</div>${item.Is_Low === "TRUE" ? '<div class="tag">Low</div>' : ''}`;
+                    grid.appendChild(card);
+                });
+                yearSec.appendChild(grid); container.appendChild(yearSec);
+            });
+        }
+
+        // --- RENDER NEWS ---
+        function renderNews(data) {
+            const container = document.getElementById('app-news');
+            container.innerHTML = '';
+            
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'news-card';
+                card.innerHTML = `
+                    <div class="news-source">${item.source} • ${item.date}</div>
+                    <div class="news-title">${item.title}</div>
+                    <a href="${item.link}" target="_blank" class="read-btn">Read Article →</a>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Initial Load
+        fetchPrice();
+    </script>
+</body>
+</html>
