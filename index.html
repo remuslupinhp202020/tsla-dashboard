@@ -6,13 +6,25 @@
     <title>TSLA Monthly Low Visualizer</title>
     <style>
         :root {
-            --bg-color: #1a1a1a;
-            --text-color: #ffffff;
-            --card-grey: linear-gradient(135deg, #424242 0%, #2c2c2c 100%);
-            --card-green: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-            --glow-green: 0 4px 15px rgba(46, 204, 113, 0.4);
-            --year-header-color: #f39c12;
-            --divider-color: #555;
+            /* --- THEME: TESLA LIGHT MODE --- */
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --header-text: #000000;
+            
+            /* Tesla Red for Year Headers */
+            --tesla-red: #e82127; 
+            
+            /* Card Colors */
+            --card-bg: #f5f5f5;
+            --card-border: #e0e0e0;
+            
+            /* Buy Signal (Green) */
+            --card-green-bg: #27ae60;
+            --card-green-text: #ffffff;
+            --glow-green: 0 4px 15px rgba(39, 174, 96, 0.3);
+            
+            /* Month Divider Style */
+            --month-border-color: #999;
         }
 
         body {
@@ -29,27 +41,37 @@
             flex-direction: column;
             align-items: center;
             margin-bottom: 30px;
-            border-bottom: 1px solid #333;
+            border-bottom: 2px solid #eee;
             padding-bottom: 20px;
         }
 
-        h1 { margin: 0; font-size: 2.5rem; letter-spacing: 2px; }
-        .subtitle { color: #888; margin: 5px 0 20px 0; }
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            letter-spacing: 1px;
+            color: var(--header-text);
+            font-weight: 800;
+        }
+
+        .subtitle {
+            color: #666;
+            margin: 5px 0 20px 0;
+        }
 
         .status-bar {
             display: flex;
             gap: 20px;
             align-items: center;
             font-size: 0.9rem;
-            color: #aaa;
-            background: #252525;
+            color: #555;
+            background: #f0f0f0;
             padding: 10px 20px;
             border-radius: 50px;
         }
 
-        /* --- Buttons --- */
+        /* --- Refresh Button --- */
         #refresh-btn {
-            background-color: #3498db;
+            background-color: var(--tesla-red);
             color: white;
             border: none;
             padding: 8px 16px;
@@ -58,82 +80,117 @@
             font-weight: bold;
             transition: background 0.2s;
         }
-        #refresh-btn:hover { background-color: #2980b9; }
 
-        /* --- Layout --- */
-        #loading { text-align: center; font-size: 1.2rem; color: #aaa; margin-top: 50px; }
+        #refresh-btn:hover {
+            background-color: #c01c22;
+        }
 
-        .year-section { margin-bottom: 40px; }
+        /* --- Layout: BACK TO GRID (Fixes spacing issues) --- */
+        .year-section {
+            margin-bottom: 50px;
+        }
 
         .year-header {
-            font-size: 1.8rem;
-            color: var(--year-header-color);
-            border-left: 4px solid var(--year-header-color);
-            padding-left: 15px;
-            margin-bottom: 15px;
+            font-size: 2.2rem;
+            color: var(--tesla-red);
+            border-bottom: 3px solid var(--tesla-red);
+            display: inline-block;
+            padding-right: 20px;
+            margin-bottom: 20px;
+            font-weight: 900;
+        }
+
+        .grid-container {
+            display: grid;
+            /* This ensures boxes stretch to fill the screen evenly */
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); 
+            gap: 15px;
+        }
+
+        /* --- Cards --- */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            padding: 15px 10px; /* More padding top/bottom */
+            text-align: center;
+            transition: transform 0.2s;
+            position: relative;
+            color: #333;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        /* NEW: Month Divider Visual */
+        /* If a card is the start of a month, we give it a thick left border */
+        .card.month-start {
+            border-left: 6px solid var(--month-border-color);
+            background: #eef; /* Slight tint to show it's a marker */
+        }
+        
+        /* Optional: Add a label above the card if it's a new month (visual flair) */
+        .card.month-start::before {
+            content: attr(data-month-name);
+            position: absolute;
+            top: -12px;
+            left: -6px;
+            background: var(--month-border-color);
+            color: white;
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+
+        /* Buy Signal (Green) */
+        .card.buy-signal {
+            background: var(--card-green-bg);
+            color: var(--card-green-text);
+            box-shadow: var(--glow-green);
+            border: 1px solid #219150;
+        }
+        
+        /* Ensure the month-border looks good on green cards too */
+        .card.buy-signal.month-start {
+            border-left-color: #1e8449; /* Darker green border */
+        }
+        .card.buy-signal.month-start::before {
+            background: #1e8449;
+        }
+
+        .date {
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .price {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .tag {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            margin-top: 6px;
+            background-color: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            padding: 2px 6px;
+            display: inline-block;
             font-weight: bold;
         }
 
-        /* Flex Container allows us to insert Dividers easily */
-        .flex-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: stretch; /* Ensures divider is same height as cards */
-        }
-
-        /* --- The Card --- */
-        .card {
-            background: var(--card-grey);
-            border-radius: 6px;
-            padding: 12px;
+        #loading {
             text-align: center;
-            transition: transform 0.2s;
-            border: 1px solid #444;
-            /* Fixed width behavior in Flexbox */
-            flex: 0 0 110px; 
-            position: relative;
-        }
-
-        .card:hover { transform: translateY(-3px); z-index: 10; }
-
-        .card.buy-signal {
-            background: var(--card-green);
-            box-shadow: var(--glow-green);
-            border: 1px solid #2ecc71;
-            color: #fff;
-        }
-
-        .date { font-size: 0.75rem; margin-bottom: 4px; opacity: 0.8; }
-        .price { font-size: 1.1rem; font-weight: 600; }
-        
-        .tag {
-            font-size: 0.6rem; text-transform: uppercase; margin-top: 4px;
-            background-color: rgba(0,0,0,0.2); border-radius: 3px;
-            padding: 2px 4px; display: inline-block;
-        }
-
-        /* --- The Vertical Month Divider --- */
-        .month-divider {
-            width: 2px;
-            background-color: var(--divider-color);
-            margin: 0 5px;
-            border-radius: 2px;
-            position: relative;
-        }
-        
-        /* Optional: A tiny tooltip on hover to say "New Month" */
-        .month-divider:hover::after {
-            content: 'Month Boundary';
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #000;
-            padding: 4px 8px;
-            font-size: 0.7rem;
-            border-radius: 4px;
-            white-space: nowrap;
+            margin-top: 50px;
+            color: #666;
+            font-size: 1.2rem;
         }
 
     </style>
@@ -150,7 +207,7 @@
         </div>
     </header>
 
-    <div id="loading">Fetching data from Google Sheets...</div>
+    <div id="loading">Fetching data...</div>
     <div id="app"></div>
 
     <script>
@@ -184,7 +241,7 @@
             data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
 
             if (data.length > 0) {
-                lastDataLabel.innerText = `Latest Market Data: ${data[0].Date}`;
+                lastDataLabel.innerText = `Latest Data: ${data[0].Date}`;
             }
 
             // 2. Group by Year
@@ -199,7 +256,6 @@
             const years = Object.keys(groupedData).sort().reverse();
 
             years.forEach(year => {
-                // Create Year Section
                 const yearSection = document.createElement('div');
                 yearSection.className = 'year-section';
 
@@ -208,30 +264,36 @@
                 header.innerText = year;
                 yearSection.appendChild(header);
 
-                // Create Flex Container for cards
-                const flexGrid = document.createElement('div');
-                flexGrid.className = 'flex-container';
+                const grid = document.createElement('div');
+                grid.className = 'grid-container';
 
                 // Helper to track month changes
                 let currentMonth = null;
 
                 groupedData[year].forEach(item => {
                     // Extract Month (e.g. "12" from "2025-12-01")
-                    // Format is YYYY-MM-DD, so month is at index 5, length 2
                     const itemMonth = item.Date.substring(5, 7);
+                    
+                    const card = document.createElement('div');
+                    
+                    // Base Classes
+                    let classes = ['card'];
+                    
+                    // Logic: Is it a Buy Signal?
+                    const isLow = item.Is_Low === "TRUE";
+                    if (isLow) classes.push('buy-signal');
 
-                    // If month changes (and it's not the very first item), insert divider
+                    // Logic: Is it the start of a new month (visually)?
+                    // We check if the month changed from the previous card
                     if (currentMonth && itemMonth !== currentMonth) {
-                        const divider = document.createElement('div');
-                        divider.className = 'month-divider';
-                        flexGrid.appendChild(divider);
+                        classes.push('month-start');
+                        // Add month name for the little label
+                        const mName = new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short' });
+                        card.setAttribute('data-month-name', mName);
                     }
                     currentMonth = itemMonth;
 
-                    // Create Card
-                    const card = document.createElement('div');
-                    const isLow = item.Is_Low === "TRUE";
-                    card.className = isLow ? 'card buy-signal' : 'card';
+                    card.className = classes.join(' ');
                     
                     const dateObj = new Date(item.Date + 'T00:00'); 
                     const dateString = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -241,10 +303,10 @@
                         <div class="price">$${item.Close}</div>
                         ${isLow ? '<div class="tag">Low</div>' : ''}
                     `;
-                    flexGrid.appendChild(card);
+                    grid.appendChild(card);
                 });
 
-                yearSection.appendChild(flexGrid);
+                yearSection.appendChild(grid);
                 container.appendChild(yearSection);
             });
         }
