@@ -13,6 +13,11 @@
             --bg-color: #ffffff;
             --text-color: #333333;
             --tesla-red: #e82127; 
+            
+            /* Green Theme for Graph & Highs */
+            --tesla-green: #27ae60; 
+            --tesla-green-light: rgba(39, 174, 96, 0.1);
+            
             --card-bg: #f8f9fa;
             --card-border: #e9ecef;
             --card-green-bg: #27ae60;
@@ -131,10 +136,10 @@
         .arrow { font-size: 0.9rem; }
         .arrow-up { color: var(--arrow-up); }
         .arrow-down { color: var(--arrow-down); }
-        
-        /* Force White Arrows on Buy Signal Cards */
         .card.buy-signal .arrow-up, .card.buy-signal .arrow-down { color: #ffffff !important; }
 
+        /* --- GRAPH STYLES --- */
+        #chart-container { width: 100%; height: 600px; margin-top: 20px; border: 1px solid #eee; border-radius: 8px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 
         /* --- NEWS STYLES --- */
         .news-container { max-width: 800px; margin: 0 auto; }
@@ -150,9 +155,6 @@
         .news-source { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
         .news-title { font-size: 1.1rem; font-weight: 600; color: #222; margin: 0 0 10px 0; line-height: 1.4; }
         .read-btn { display: inline-block; margin-top: 10px; text-decoration: none; color: var(--tesla-red); font-weight: bold; font-size: 0.9rem; }
-
-        /* --- GRAPH STYLES --- */
-        #chart-container { width: 100%; height: 600px; margin-top: 20px; }
 
         #loading { text-align: center; margin-top: 50px; color: #666; font-size: 1.2rem; }
     </style>
@@ -205,7 +207,7 @@
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzUOHMtxnPtKYhCz6ZaT-PdV72FAQRVeTOaKzyJsd3Tor-ROjRd7sUuwK9Y-3sC7P7m/exec';
-        let globalPriceData = []; // Store data globally so we don't re-fetch for chart
+        let globalPriceData = []; 
 
         function refreshAll() {
             document.getElementById('refresh-btn').innerText = 'Loading...';
@@ -220,30 +222,20 @@
             document.getElementById('view-' + tabName).classList.add('active');
 
             if (tabName === 'news' && document.getElementById('app-news').innerHTML === '') fetchNews();
-            
-            // If switching to Graph, render it
-            if (tabName === 'graph') {
-                renderChart(globalPriceData);
-            }
+            if (tabName === 'graph') renderChart(globalPriceData);
         }
 
-        // --- FETCH PRICE ---
         async function fetchPrice() {
             try {
                 const response = await fetch(API_URL + '?t=' + new Date().getTime()); 
                 const data = await response.json();
-                
-                // Store globally for the Chart tab
                 globalPriceData = data; 
-
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('refresh-btn').innerText = '↻ Refresh';
-                
                 renderPrice(data);
             } catch (error) { console.error(error); }
         }
 
-        // --- FETCH NEWS ---
         async function fetchNews() {
             const newsContainer = document.getElementById('app-news');
             if(newsContainer.innerHTML === '') newsContainer.innerHTML = '<div style="text-align:center;color:#999;margin-top:20px;">Loading News...</div>';
@@ -255,12 +247,9 @@
             } catch (error) { console.error(error); }
         }
 
-        // --- RENDER PRICE GRID ---
         function renderPrice(data) {
             const container = document.getElementById('app-price');
             const lastDataLabel = document.getElementById('last-data-date');
-            
-            // Sort: Newest First
             data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
             if (data.length > 0) lastDataLabel.innerText = `Latest Data: ${data[0].Date}`;
 
@@ -279,9 +268,7 @@
                 const grid = document.createElement('div'); grid.className = 'grid-container';
                 
                 let currentMonth = null;
-                
-                // Loop through items in this year
-                groupedData[year].forEach((item, index) => {
+                groupedData[year].forEach((item) => {
                     const itemMonth = item.Date.substring(5, 7);
                     const card = document.createElement('div');
                     let classes = ['card'];
@@ -295,65 +282,39 @@
                     
                     const dStr = new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     
-                    // --- ARROW LOGIC ---
-                    // Since data is sorted Newest to Oldest:
-                    // Previous Day is index + 1
                     let arrowHtml = '';
-                    
-                    // We need to find the correct index in the MAIN data array, not just the grouped year array
-                    // But easier way: data is already sorted. Let's find 'item' in 'data'
                     const mainIndex = data.indexOf(item);
-                    
                     if (mainIndex < data.length - 1) {
                         const prevDayPrice = data[mainIndex + 1].Close;
                         const diff = item.Close - prevDayPrice;
-                        
-                        if (diff > 0) {
-                            arrowHtml = '<span class="arrow arrow-up">▲</span>';
-                        } else if (diff < 0) {
-                            arrowHtml = '<span class="arrow arrow-down">▼</span>';
-                        } else {
-                            arrowHtml = '<span class="arrow" style="color:#aaa">-</span>';
-                        }
+                        if (diff > 0) arrowHtml = '<span class="arrow arrow-up">▲</span>';
+                        else if (diff < 0) arrowHtml = '<span class="arrow arrow-down">▼</span>';
+                        else arrowHtml = '<span class="arrow" style="color:#aaa">-</span>';
                     }
 
-                    card.innerHTML = `
-                        <div class="date">${dStr}</div>
-                        <div class="price">
-                            $${item.Close}
-                            ${arrowHtml}
-                        </div>
-                        ${item.Is_Low === "TRUE" ? '<div class="tag">Low</div>' : ''}
-                    `;
+                    card.innerHTML = `<div class="date">${dStr}</div><div class="price">$${item.Close} ${arrowHtml}</div>${item.Is_Low === "TRUE" ? '<div class="tag">Low</div>' : ''}`;
                     grid.appendChild(card);
                 });
                 yearSec.appendChild(grid); container.appendChild(yearSec);
             });
         }
 
-        // --- RENDER NEWS ---
         function renderNews(data) {
             const container = document.getElementById('app-news');
             container.innerHTML = '';
             data.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'news-card';
-                card.innerHTML = `
-                    <div class="news-source">${item.source} • ${item.date}</div>
-                    <div class="news-title">${item.title}</div>
-                    <a href="${item.link}" target="_blank" class="read-btn">Read Article →</a>
-                `;
+                card.innerHTML = `<div class="news-source">${item.source} • ${item.date}</div><div class="news-title">${item.title}</div><a href="${item.link}" target="_blank" class="read-btn">Read Article →</a>`;
                 container.appendChild(card);
             });
         }
 
-        // --- RENDER GRAPH (PLOTLY) ---
+        // --- UPDATED GREEN CHART ---
         function renderChart(data) {
             if (!data || data.length === 0) return;
 
-            // Sort Oldest to Newest for the Chart (Plotly prefers chronological)
             const chartData = [...data].sort((a, b) => new Date(a.Date) - new Date(b.Date));
-            
             const xValues = chartData.map(d => d.Date);
             const yValues = chartData.map(d => d.Close);
 
@@ -362,30 +323,36 @@
                 y: yValues,
                 type: 'scatter',
                 mode: 'lines',
-                line: { color: '#e82127', width: 2 }, // Tesla Red line
-                fill: 'tozeroy', // Fill area under line
-                fillcolor: 'rgba(232, 33, 39, 0.1)' 
+                line: { color: '#27ae60', width: 2 }, // GREEN LINE
+                fill: 'tozeroy',
+                fillcolor: 'rgba(39, 174, 96, 0.1)' // LIGHT GREEN FILL
             };
 
             const layout = {
                 title: false,
                 xaxis: {
-                    rangeslider: { visible: true }, // The Google-style slider
-                    type: 'date'
+                    type: 'date',
+                    rangeselector: {
+                        x: 0,
+                        y: 1.1, // Positions buttons at the top
+                        buttons: [
+                            {count: 1, label: '1M', step: 'month', stepmode: 'backward'},
+                            {count: 3, label: '3M', step: 'month', stepmode: 'backward'},
+                            {count: 6, label: '6M', step: 'month', stepmode: 'backward'},
+                            {count: 1, label: 'YTD', step: 'year', stepmode: 'todate'},
+                            {count: 1, label: '1Y', step: 'year', stepmode: 'backward'},
+                            {step: 'all', label: 'MAX'}
+                        ]
+                    }
                 },
-                yaxis: {
-                    fixedrange: false,
-                    title: 'Price ($)'
-                },
-                margin: { t: 20, r: 20, l: 40, b: 40 }
+                yaxis: { fixedrange: false, title: 'Price ($)' },
+                margin: { t: 50, r: 20, l: 40, b: 40 } // Added top margin for buttons
             };
 
             const config = { responsive: true, displayModeBar: false };
-
             Plotly.newPlot('chart-container', [trace], layout, config);
         }
 
-        // Initial Load
         fetchPrice();
     </script>
 </body>
