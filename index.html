@@ -15,8 +15,6 @@
             --card-green-bg: #27ae60;
             --card-green-text: #ffffff;
             --glow-green: 0 4px 15px rgba(39, 174, 96, 0.3);
-            --tab-active-bg: #e82127;
-            --tab-active-text: #fff;
         }
 
         body {
@@ -38,6 +36,32 @@
         }
 
         h1 { margin: 0; font-size: 2.2rem; font-weight: 800; letter-spacing: 1px; }
+
+        /* RESTORED: Status Bar */
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #666;
+            background: #f1f1f1;
+            padding: 8px 20px;
+            border-radius: 50px;
+            margin-top: 15px;
+        }
+
+        #refresh-btn {
+            background-color: var(--tesla-red);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+        }
+        #refresh-btn:hover { background-color: #c01c22; }
 
         .tabs {
             display: flex;
@@ -68,7 +92,7 @@
         .view-section { display: none; width: 100%; }
         .view-section.active { display: block; }
 
-        /* --- GRID STYLES (Existing) --- */
+        /* --- GRID STYLES --- */
         .year-section { margin-bottom: 40px; }
         .year-header {
             font-size: 2rem; color: var(--tesla-red);
@@ -96,7 +120,7 @@
         .price { font-size: 1.2rem; font-weight: 700; }
         .tag { font-size: 0.6rem; background: rgba(255,255,255,0.3); padding: 2px 5px; border-radius: 3px; display: inline-block; margin-top: 5px; }
 
-        /* --- NEWS STYLES (New) --- */
+        /* --- NEWS STYLES --- */
         .news-container { max-width: 800px; margin: 0 auto; }
         
         .x-links {
@@ -116,17 +140,9 @@
             transition: border-color 0.2s;
         }
         .news-card:hover { border-color: var(--tesla-red); }
-        .news-source {
-            font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
-        }
-        .news-title {
-            font-size: 1.1rem; font-weight: 600; color: #222; margin: 0 0 10px 0; line-height: 1.4;
-        }
-        .news-date { font-size: 0.8rem; color: #aaa; }
-        .read-btn {
-            display: inline-block; margin-top: 10px; text-decoration: none;
-            color: var(--tesla-red); font-weight: bold; font-size: 0.9rem;
-        }
+        .news-source { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .news-title { font-size: 1.1rem; font-weight: 600; color: #222; margin: 0 0 10px 0; line-height: 1.4; }
+        .read-btn { display: inline-block; margin-top: 10px; text-decoration: none; color: var(--tesla-red); font-weight: bold; font-size: 0.9rem; }
 
         #loading { text-align: center; margin-top: 50px; color: #666; font-size: 1.2rem; }
     </style>
@@ -135,137 +151,17 @@
 
     <header>
         <h1>TSLA DASHBOARD</h1>
+        
+        <!-- RESTORED: Status Bar -->
+        <div class="status-bar">
+            <span id="last-data-date">Latest Data: Loading...</span>
+            <button id="refresh-btn" onclick="refreshAll()">↻ Refresh</button>
+        </div>
+
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('price')">Price Grid</button>
             <button class="tab-btn" onclick="switchTab('news')">News & Social</button>
         </div>
     </header>
 
-    <div id="loading">Fetching data...</div>
-
-    <!-- TAB 1: PRICE GRID -->
-    <div id="view-price" class="view-section active">
-        <div id="app-price"></div>
-    </div>
-
-    <!-- TAB 2: NEWS & SOCIAL -->
-    <div id="view-news" class="view-section">
-        <div class="news-container">
-            
-            <!-- X (Twitter) Smart Links -->
-            <div class="x-links">
-                <a href="https://twitter.com/search?q=%24TSLA%20min_faves%3A500&src=typed_query&f=live" target="_blank" class="x-btn">
-                    <span>⚡ Top TSLA Tweets</span>
-                </a>
-                <a href="https://twitter.com/elonmusk" target="_blank" class="x-btn">
-                    <span>🚀 Elon Musk</span>
-                </a>
-                <a href="https://twitter.com/Tesla" target="_blank" class="x-btn">
-                    <span>🚗 Official Tesla</span>
-                </a>
-            </div>
-
-            <!-- News Feed -->
-            <div id="app-news"></div>
-        </div>
-    </div>
-
-    <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzUOHMtxnPtKYhCz6ZaT-PdV72FAQRVeTOaKzyJsd3Tor-ROjRd7sUuwK9Y-3sC7P7m/exec'; // KEEP YOUR SAME URL
-
-        // --- TAB LOGIC ---
-        function switchTab(tabName) {
-            // Update Buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-
-            // Update Views
-            document.querySelectorAll('.view-section').forEach(view => view.classList.remove('active'));
-            document.getElementById('view-' + tabName).classList.add('active');
-
-            // Load Data if not loaded
-            if (tabName === 'news' && document.getElementById('app-news').innerHTML === '') {
-                fetchNews();
-            }
-        }
-
-        // --- FETCH PRICE (Default) ---
-        async function fetchPrice() {
-            try {
-                const response = await fetch(API_URL); // Default fetches price
-                const data = await response.json();
-                document.getElementById('loading').style.display = 'none';
-                renderPrice(data);
-            } catch (error) { console.error(error); }
-        }
-
-        // --- FETCH NEWS ---
-        async function fetchNews() {
-            document.getElementById('app-news').innerHTML = '<div style="text-align:center;color:#999;">Loading News...</div>';
-            try {
-                // We add ?type=news to tell Backend to run the News function
-                const response = await fetch(API_URL + '?type=news'); 
-                const data = await response.json();
-                renderNews(data);
-            } catch (error) { console.error(error); }
-        }
-
-        // --- RENDER PRICE GRID ---
-        function renderPrice(data) {
-            const container = document.getElementById('app-price');
-            data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-            const groupedData = {};
-            data.forEach(item => {
-                const year = item.Date.substring(0, 4);
-                if (!groupedData[year]) groupedData[year] = [];
-                groupedData[year].push(item);
-            });
-            const years = Object.keys(groupedData).sort().reverse();
-
-            years.forEach(year => {
-                const yearSec = document.createElement('div'); yearSec.className = 'year-section';
-                yearSec.innerHTML = `<div class="year-header">${year}</div>`;
-                const grid = document.createElement('div'); grid.className = 'grid-container';
-                
-                let currentMonth = null;
-                groupedData[year].forEach(item => {
-                    const itemMonth = item.Date.substring(5, 7);
-                    const card = document.createElement('div');
-                    let classes = ['card'];
-                    if (item.Is_Low === "TRUE") classes.push('buy-signal');
-                    if (currentMonth && itemMonth !== currentMonth) {
-                        classes.push('month-start');
-                        card.setAttribute('data-month-name', new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short' }));
-                    }
-                    currentMonth = itemMonth;
-                    card.className = classes.join(' ');
-                    const dStr = new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    card.innerHTML = `<div class="date">${dStr}</div><div class="price">$${item.Close}</div>${item.Is_Low === "TRUE" ? '<div class="tag">Low</div>' : ''}`;
-                    grid.appendChild(card);
-                });
-                yearSec.appendChild(grid); container.appendChild(yearSec);
-            });
-        }
-
-        // --- RENDER NEWS LIST ---
-        function renderNews(data) {
-            const container = document.getElementById('app-news');
-            container.innerHTML = '';
-            
-            data.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'news-card';
-                card.innerHTML = `
-                    <div class="news-source">${item.source} • ${item.date}</div>
-                    <div class="news-title">${item.title}</div>
-                    <a href="${item.link}" target="_blank" class="read-btn">Read Article →</a>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        // Initial Load
-        fetchPrice();
-    </script>
-</body>
-</html>
+    <div id="loading">Fetching d
