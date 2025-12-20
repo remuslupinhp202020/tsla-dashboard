@@ -3,28 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TSLA Monthly Low Visualizer</title>
+    <title>TSLA Dashboard</title>
     <style>
         :root {
-            /* --- THEME: TESLA LIGHT MODE --- */
+            /* Tesla Light Theme */
             --bg-color: #ffffff;
             --text-color: #333333;
-            --header-text: #000000;
-            
-            /* Tesla Red for Year Headers */
             --tesla-red: #e82127; 
-            
-            /* Card Colors */
-            --card-bg: #f5f5f5;
-            --card-border: #e0e0e0;
-            
-            /* Buy Signal (Green) */
+            --card-bg: #f8f9fa;
+            --card-border: #e9ecef;
             --card-green-bg: #27ae60;
             --card-green-text: #ffffff;
             --glow-green: 0 4px 15px rgba(39, 174, 96, 0.3);
-            
-            /* Month Divider Style */
-            --month-border-color: #999;
+            --tab-active-bg: #e82127;
+            --tab-active-text: #fff;
         }
 
         body {
@@ -35,284 +27,245 @@
             padding: 20px;
         }
 
-        /* --- Header Section --- */
+        /* --- Header & Tabs --- */
         header {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #eee;
             padding-bottom: 20px;
         }
 
-        h1 {
-            margin: 0;
-            font-size: 2.5rem;
-            letter-spacing: 1px;
-            color: var(--header-text);
-            font-weight: 800;
-        }
+        h1 { margin: 0; font-size: 2.2rem; font-weight: 800; letter-spacing: 1px; }
 
-        .subtitle {
-            color: #666;
-            margin: 5px 0 20px 0;
-        }
-
-        .status-bar {
+        .tabs {
             display: flex;
-            gap: 20px;
-            align-items: center;
-            font-size: 0.9rem;
-            color: #555;
-            background: #f0f0f0;
-            padding: 10px 20px;
-            border-radius: 50px;
+            gap: 10px;
+            margin-top: 20px;
         }
 
-        /* --- Refresh Button --- */
-        #refresh-btn {
-            background-color: var(--tesla-red);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
+        .tab-btn {
+            padding: 10px 25px;
+            border: 2px solid #ddd;
+            background: none;
             cursor: pointer;
             font-weight: bold;
-            transition: background 0.2s;
-        }
-
-        #refresh-btn:hover {
-            background-color: #c01c22;
-        }
-
-        /* --- Layout: BACK TO GRID (Fixes spacing issues) --- */
-        .year-section {
-            margin-bottom: 50px;
-        }
-
-        .year-header {
-            font-size: 2.2rem;
-            color: var(--tesla-red);
-            border-bottom: 3px solid var(--tesla-red);
-            display: inline-block;
-            padding-right: 20px;
-            margin-bottom: 20px;
-            font-weight: 900;
-        }
-
-        .grid-container {
-            display: grid;
-            /* This ensures boxes stretch to fill the screen evenly */
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); 
-            gap: 15px;
-        }
-
-        /* --- Cards --- */
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 6px;
-            padding: 15px 10px; /* More padding top/bottom */
-            text-align: center;
-            transition: transform 0.2s;
-            position: relative;
-            color: #333;
-        }
-
-        .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            z-index: 10;
-        }
-
-        /* NEW: Month Divider Visual */
-        /* If a card is the start of a month, we give it a thick left border */
-        .card.month-start {
-            border-left: 6px solid var(--month-border-color);
-            background: #eef; /* Slight tint to show it's a marker */
-        }
-        
-        /* Optional: Add a label above the card if it's a new month (visual flair) */
-        .card.month-start::before {
-            content: attr(data-month-name);
-            position: absolute;
-            top: -12px;
-            left: -6px;
-            background: var(--month-border-color);
-            color: white;
-            font-size: 0.6rem;
-            padding: 2px 6px;
-            border-radius: 3px;
-            text-transform: uppercase;
-        }
-
-        /* Buy Signal (Green) */
-        .card.buy-signal {
-            background: var(--card-green-bg);
-            color: var(--card-green-text);
-            box-shadow: var(--glow-green);
-            border: 1px solid #219150;
-        }
-        
-        /* Ensure the month-border looks good on green cards too */
-        .card.buy-signal.month-start {
-            border-left-color: #1e8449; /* Darker green border */
-        }
-        .card.buy-signal.month-start::before {
-            background: #1e8449;
-        }
-
-        .date {
-            font-size: 0.8rem;
-            margin-bottom: 5px;
-            opacity: 0.9;
-            font-weight: 500;
-        }
-
-        .price {
-            font-size: 1.3rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .tag {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            margin-top: 6px;
-            background-color: rgba(255,255,255,0.3);
-            border-radius: 3px;
-            padding: 2px 6px;
-            display: inline-block;
-            font-weight: bold;
-        }
-
-        #loading {
-            text-align: center;
-            margin-top: 50px;
+            font-size: 1rem;
+            border-radius: 25px;
+            transition: all 0.2s;
             color: #666;
-            font-size: 1.2rem;
         }
 
+        .tab-btn.active {
+            background-color: var(--tesla-red);
+            border-color: var(--tesla-red);
+            color: white;
+            box-shadow: 0 4px 10px rgba(232, 33, 39, 0.3);
+        }
+
+        /* --- Content Views --- */
+        .view-section { display: none; width: 100%; }
+        .view-section.active { display: block; }
+
+        /* --- GRID STYLES (Existing) --- */
+        .year-section { margin-bottom: 40px; }
+        .year-header {
+            font-size: 2rem; color: var(--tesla-red);
+            border-bottom: 3px solid var(--tesla-red);
+            display: inline-block; padding-right: 20px; margin-bottom: 20px; font-weight: 900;
+        }
+        .grid-container {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;
+        }
+        .card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 6px; padding: 12px 8px; text-align: center;
+            transition: transform 0.2s; position: relative;
+        }
+        .card:hover { transform: translateY(-3px); z-index: 10; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .card.month-start { border-left: 6px solid #999; background: #eef; }
+        .card.month-start::before {
+            content: attr(data-month-name); position: absolute; top: -12px; left: -6px;
+            background: #999; color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 3px;
+        }
+        .card.buy-signal { background: var(--card-green-bg); color: var(--card-green-text); box-shadow: var(--glow-green); }
+        .card.buy-signal.month-start { border-left-color: #145a32; }
+        .card.buy-signal.month-start::before { background: #145a32; }
+        .date { font-size: 0.75rem; opacity: 0.9; margin-bottom: 4px; }
+        .price { font-size: 1.2rem; font-weight: 700; }
+        .tag { font-size: 0.6rem; background: rgba(255,255,255,0.3); padding: 2px 5px; border-radius: 3px; display: inline-block; margin-top: 5px; }
+
+        /* --- NEWS STYLES (New) --- */
+        .news-container { max-width: 800px; margin: 0 auto; }
+        
+        .x-links {
+            display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px;
+        }
+        
+        .x-btn {
+            background: #000; color: #fff; text-decoration: none;
+            padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 600;
+            display: flex; align-items: center; gap: 8px; transition: transform 0.2s;
+        }
+        .x-btn:hover { transform: scale(1.05); }
+
+        .news-card {
+            background: white; border: 1px solid #eee; border-radius: 8px;
+            padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+            transition: border-color 0.2s;
+        }
+        .news-card:hover { border-color: var(--tesla-red); }
+        .news-source {
+            font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+        }
+        .news-title {
+            font-size: 1.1rem; font-weight: 600; color: #222; margin: 0 0 10px 0; line-height: 1.4;
+        }
+        .news-date { font-size: 0.8rem; color: #aaa; }
+        .read-btn {
+            display: inline-block; margin-top: 10px; text-decoration: none;
+            color: var(--tesla-red); font-weight: bold; font-size: 0.9rem;
+        }
+
+        #loading { text-align: center; margin-top: 50px; color: #666; font-size: 1.2rem; }
     </style>
 </head>
 <body>
 
     <header>
         <h1>TSLA DASHBOARD</h1>
-        <p class="subtitle">Visualizing Monthly Lows (Buy Signals)</p>
-        
-        <div class="status-bar">
-            <span id="last-data-date">Latest Data: Loading...</span>
-            <button id="refresh-btn" onclick="fetchData()">↻ Refresh Data</button>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('price')">Price Grid</button>
+            <button class="tab-btn" onclick="switchTab('news')">News & Social</button>
         </div>
     </header>
 
     <div id="loading">Fetching data...</div>
-    <div id="app"></div>
+
+    <!-- TAB 1: PRICE GRID -->
+    <div id="view-price" class="view-section active">
+        <div id="app-price"></div>
+    </div>
+
+    <!-- TAB 2: NEWS & SOCIAL -->
+    <div id="view-news" class="view-section">
+        <div class="news-container">
+            
+            <!-- X (Twitter) Smart Links -->
+            <div class="x-links">
+                <a href="https://twitter.com/search?q=%24TSLA%20min_faves%3A500&src=typed_query&f=live" target="_blank" class="x-btn">
+                    <span>⚡ Top TSLA Tweets</span>
+                </a>
+                <a href="https://twitter.com/elonmusk" target="_blank" class="x-btn">
+                    <span>🚀 Elon Musk</span>
+                </a>
+                <a href="https://twitter.com/Tesla" target="_blank" class="x-btn">
+                    <span>🚗 Official Tesla</span>
+                </a>
+            </div>
+
+            <!-- News Feed -->
+            <div id="app-news"></div>
+        </div>
+    </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzUOHMtxnPtKYhCz6ZaT-PdV72FAQRVeTOaKzyJsd3Tor-ROjRd7sUuwK9Y-3sC7P7m/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzUOHMtxnPtKYhCz6ZaT-PdV72FAQRVeTOaKzyJsd3Tor-ROjRd7sUuwK9Y-3sC7P7m/exec'; // KEEP YOUR SAME URL
 
-        async function fetchData() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('app').innerHTML = ''; 
-            document.getElementById('refresh-btn').innerText = 'Loading...';
+        // --- TAB LOGIC ---
+        function switchTab(tabName) {
+            // Update Buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
 
-            try {
-                const response = await fetch(API_URL + '?t=' + new Date().getTime());
-                const data = await response.json();
-                
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('refresh-btn').innerText = '↻ Refresh Data';
-                
-                processAndRender(data);
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('loading').innerText = 'Error loading data.';
-                document.getElementById('refresh-btn').innerText = 'Retry';
+            // Update Views
+            document.querySelectorAll('.view-section').forEach(view => view.classList.remove('active'));
+            document.getElementById('view-' + tabName).classList.add('active');
+
+            // Load Data if not loaded
+            if (tabName === 'news' && document.getElementById('app-news').innerHTML === '') {
+                fetchNews();
             }
         }
 
-        function processAndRender(data) {
-            const container = document.getElementById('app');
-            const lastDataLabel = document.getElementById('last-data-date');
+        // --- FETCH PRICE (Default) ---
+        async function fetchPrice() {
+            try {
+                const response = await fetch(API_URL); // Default fetches price
+                const data = await response.json();
+                document.getElementById('loading').style.display = 'none';
+                renderPrice(data);
+            } catch (error) { console.error(error); }
+        }
 
-            // 1. Sort Newest to Oldest
+        // --- FETCH NEWS ---
+        async function fetchNews() {
+            document.getElementById('app-news').innerHTML = '<div style="text-align:center;color:#999;">Loading News...</div>';
+            try {
+                // We add ?type=news to tell Backend to run the News function
+                const response = await fetch(API_URL + '?type=news'); 
+                const data = await response.json();
+                renderNews(data);
+            } catch (error) { console.error(error); }
+        }
+
+        // --- RENDER PRICE GRID ---
+        function renderPrice(data) {
+            const container = document.getElementById('app-price');
             data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-
-            if (data.length > 0) {
-                lastDataLabel.innerText = `Latest Data: ${data[0].Date}`;
-            }
-
-            // 2. Group by Year
             const groupedData = {};
             data.forEach(item => {
                 const year = item.Date.substring(0, 4);
                 if (!groupedData[year]) groupedData[year] = [];
                 groupedData[year].push(item);
             });
-
-            // 3. Render Groups (Years Descending)
             const years = Object.keys(groupedData).sort().reverse();
 
             years.forEach(year => {
-                const yearSection = document.createElement('div');
-                yearSection.className = 'year-section';
-
-                const header = document.createElement('div');
-                header.className = 'year-header';
-                header.innerText = year;
-                yearSection.appendChild(header);
-
-                const grid = document.createElement('div');
-                grid.className = 'grid-container';
-
-                // Helper to track month changes
+                const yearSec = document.createElement('div'); yearSec.className = 'year-section';
+                yearSec.innerHTML = `<div class="year-header">${year}</div>`;
+                const grid = document.createElement('div'); grid.className = 'grid-container';
+                
                 let currentMonth = null;
-
                 groupedData[year].forEach(item => {
-                    // Extract Month (e.g. "12" from "2025-12-01")
                     const itemMonth = item.Date.substring(5, 7);
-                    
                     const card = document.createElement('div');
-                    
-                    // Base Classes
                     let classes = ['card'];
-                    
-                    // Logic: Is it a Buy Signal?
-                    const isLow = item.Is_Low === "TRUE";
-                    if (isLow) classes.push('buy-signal');
-
-                    // Logic: Is it the start of a new month (visually)?
-                    // We check if the month changed from the previous card
+                    if (item.Is_Low === "TRUE") classes.push('buy-signal');
                     if (currentMonth && itemMonth !== currentMonth) {
                         classes.push('month-start');
-                        // Add month name for the little label
-                        const mName = new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short' });
-                        card.setAttribute('data-month-name', mName);
+                        card.setAttribute('data-month-name', new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short' }));
                     }
                     currentMonth = itemMonth;
-
                     card.className = classes.join(' ');
-                    
-                    const dateObj = new Date(item.Date + 'T00:00'); 
-                    const dateString = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-                    card.innerHTML = `
-                        <div class="date">${dateString}</div>
-                        <div class="price">$${item.Close}</div>
-                        ${isLow ? '<div class="tag">Low</div>' : ''}
-                    `;
+                    const dStr = new Date(item.Date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    card.innerHTML = `<div class="date">${dStr}</div><div class="price">$${item.Close}</div>${item.Is_Low === "TRUE" ? '<div class="tag">Low</div>' : ''}`;
                     grid.appendChild(card);
                 });
-
-                yearSection.appendChild(grid);
-                container.appendChild(yearSection);
+                yearSec.appendChild(grid); container.appendChild(yearSec);
             });
         }
 
-        fetchData();
-    </script>
+        // --- RENDER NEWS LIST ---
+        function renderNews(data) {
+            const container = document.getElementById('app-news');
+            container.innerHTML = '';
+            
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'news-card';
+                card.innerHTML = `
+                    <div class="news-source">${item.source} • ${item.date}</div>
+                    <div class="news-title">${item.title}</div>
+                    <a href="${item.link}" target="_blank" class="read-btn">Read Article →</a>
+                `;
+                container.appendChild(card);
+            });
+        }
 
+        // Initial Load
+        fetchPrice();
+    </script>
 </body>
 </html>
