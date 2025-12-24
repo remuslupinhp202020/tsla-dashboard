@@ -238,11 +238,9 @@
             <!-- REFRESH WEBSITE BUTTON -->
             <button id="refresh-btn" onclick="refreshAll()">↻ Refresh View</button>
             
-            <!-- NEW: MANUAL UPDATE BUTTON -->
-            <!-- Replace YOUR_COLAB_LINK_HERE with the link you copied from Colab -->
-            <a href="https://colab.research.google.com/drive/13eaWEaMmTI-XfHe8a8nXcnC7cjxs2d_3?usp=sharing" target="_blank" style="text-decoration:none;">
-                <button id="update-btn">⚙️ Update Data</button>
-            </a>
+            
+            <!-- ONE-CLICK UPDATE BUTTON -->
+            <button id="update-btn" onclick="triggerBackendUpdate()">⚙️ Update Data</button>
         </div>
 
         <div class="tabs">
@@ -518,6 +516,37 @@
                 renderChart(globalPriceData);
             }
         };
+
+        // --- TRIGGER BACKEND UPDATE ---
+        async function triggerBackendUpdate() {
+            const btn = document.getElementById('update-btn');
+            const originalText = btn.innerText;
+            
+            btn.innerText = '⏳ Updating...';
+            btn.disabled = true;
+            
+            try {
+                // Call Apps Script with type=update
+                // We use 'no-cors' mode because triggering a script write can sometimes be blocked by browser CORS, 
+                // but the execution still happens on the server.
+                await fetch(API_URL + '?type=update', { mode: 'no-cors' });
+                
+                // Wait 2 seconds for Sheet to finish writing
+                setTimeout(() => {
+                    btn.innerText = '✅ Done!';
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.disabled = false;
+                        refreshAll(); // Auto-refresh view
+                    }, 2000);
+                }, 2000);
+
+            } catch (error) {
+                console.error(error);
+                btn.innerText = '❌ Error';
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>
