@@ -148,29 +148,6 @@
         /* --- GRAPH STYLES --- */
         #chart-container { width: 100%; height: 600px; margin-top: 20px; border: 1px solid #eee; border-radius: 8px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); box-sizing: border-box; }
 
-        /* --- MARKET SHARE STYLES --- */
-        .controls-container {
-            display: flex; gap: 15px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;
-        }
-        select {
-            padding: 10px 15px; border-radius: 8px; border: 1px solid #ddd; font-size: 1rem; background: #fff; cursor: pointer;
-        }
-        #sales-chart-container { width: 100%; height: 500px; border: 1px solid #eee; border-radius: 8px; padding: 10px; }
-        
-        .explanation-box {
-            background-color: #f8f9fa;
-            border-left: 5px solid var(--tesla-red);
-            padding: 20px;
-            margin-top: 30px;
-            border-radius: 0 8px 8px 0;
-            color: #555;
-            line-height: 1.6;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .explanation-title { font-weight: 800; color: #333; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
-
         /* --- NEWS STYLES --- */
         .news-container { max-width: 1200px; margin: 0 auto; }
         .x-links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
@@ -195,7 +172,7 @@
             .tab-btn { padding: 8px 15px; font-size: 0.9rem; margin-bottom: 5px; }
             .grid-container { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
             .price { font-size: 1rem; }
-            #chart-container, #sales-chart-container { height: 400px; padding: 5px; }
+            #chart-container { height: 400px; padding: 5px; }
             .x-btn { width: 100%; justify-content: center; } 
         }
 
@@ -216,7 +193,6 @@
         <div class="tabs">
             <button class="tab-btn" onclick="switchTab('price')" id="btn-price">Price Grid</button>
             <button class="tab-btn" onclick="switchTab('graph')" id="btn-graph">Price Graph</button>
-            <button class="tab-btn" onclick="switchTab('sales')" id="btn-sales">Market Share</button>
             <button class="tab-btn" onclick="switchTab('news')" id="btn-news">News & Social</button>
         </div>
     </header>
@@ -233,25 +209,7 @@
         <div id="chart-container"></div>
     </div>
 
-    <!-- TAB 3: MARKET SHARE -->
-    <div id="view-sales" class="view-section">
-        <div class="controls-container">
-            <select id="sel-country" onchange="filterSalesChart()">
-                <option value="Global">Loading...</option>
-            </select>
-            <select id="sel-year" onchange="filterSalesChart()">
-                <option value="2024">Loading...</option>
-            </select>
-        </div>
-        <div id="sales-chart-container"></div>
-        <div class="explanation-box">
-            <div class="explanation-title">ℹ️ About Market Share Data</div>
-            <p>This chart displays EV unit sales volume by brand. The data is aggregated from various regulatory bodies (CPCA, OFV, KBA) and company reports.</p>
-            <p><strong>Note:</strong> Global sales figures are typically released <strong>Quarterly</strong>.</p>
-        </div>
-    </div>
-
-    <!-- TAB 4: NEWS & SOCIAL -->
+    <!-- TAB 3: NEWS & SOCIAL -->
     <div id="view-news" class="view-section">
         <div class="news-container">
             <div class="x-links">
@@ -270,11 +228,10 @@
     </div>
 
     <script>
-        // *** THIS IS YOUR EXTRACTED API URL ***
+        // *** PASTE YOUR GOOGLE APPS SCRIPT URL BELOW ***
         const API_URL = 'https://script.google.com/macros/s/AKfycbzUOHMtxnPtKYhCz6ZaT-PdV72FAQRVeTOaKzyJsd3Tor-ROjRd7sUuwK9Y-3sC7P7m/exec';
         
         let globalPriceData = []; 
-        let globalSalesData = []; 
 
         document.addEventListener('DOMContentLoaded', () => {
             const savedTab = localStorage.getItem('activeTab') || 'price';
@@ -310,7 +267,6 @@
         function refreshAll() {
             fetchPrice();
             fetchNews();
-            fetchSales();
         }
 
         function switchTab(tabName) {
@@ -321,7 +277,6 @@
             document.querySelectorAll('.view-section').forEach(view => view.classList.remove('active'));
             document.getElementById('view-' + tabName).classList.add('active');
             if (tabName === 'graph' && globalPriceData.length > 0) setTimeout(() => renderChart(globalPriceData), 100);
-            if (tabName === 'sales' && globalSalesData.length > 0) setTimeout(() => filterSalesChart(), 100);
         }
 
         async function fetchPrice() {
@@ -335,18 +290,6 @@
                     if (localStorage.getItem('activeTab') === 'graph') renderChart(data);
                 }
             } catch (error) { console.error("Price error:", error); }
-        }
-
-        async function fetchSales() {
-            try {
-                const response = await fetch(API_URL + '?type=sales&t=' + new Date().getTime());
-                const data = await response.json();
-                if (data && data.length > 0) {
-                    globalSalesData = data;
-                    populateDropdowns(data);
-                    filterSalesChart();
-                }
-            } catch (error) { console.error("Sales error:", error); }
         }
 
         async function fetchNews() {
@@ -381,31 +324,6 @@
                 });
                 renderNews(uniqueArticles);
             } catch (error) { container.innerHTML = '<div style="grid-column: 1/-1; text-align:center;color:red;">Error loading news.</div>'; }
-        }
-
-        function populateDropdowns(data) {
-            const countries = [...new Set(data.map(item => item.Country))];
-            const years = [...new Set(data.map(item => item.Year))].sort().reverse();
-            const cSelect = document.getElementById('sel-country');
-            const ySelect = document.getElementById('sel-year');
-            cSelect.innerHTML = countries.map(c => `<option value="${c}">${c}</option>`).join('');
-            ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
-            if(countries.includes("Global")) cSelect.value = "Global";
-            if(years.length > 0) ySelect.value = years[0];
-        }
-
-        function filterSalesChart() {
-            const country = document.getElementById('sel-country').value;
-            const year = document.getElementById('sel-year').value;
-            const filtered = globalSalesData.filter(d => d.Country == country && d.Year == year);
-            filtered.sort((a, b) => b.Units - a.Units);
-            const brands = filtered.map(d => d.Brand);
-            const units = filtered.map(d => d.Units);
-            const colors = brands.map(b => (b === 'Tesla') ? '#27ae60' : '#bdc3c7');
-            const trace = { x: brands, y: units, type: 'bar', marker: { color: colors }, text: units.map(u => u.toLocaleString()), textposition: 'auto' };
-            const layout = { title: `EV Sales: ${country} (${year})`, xaxis: { title: 'Brand' }, yaxis: { title: 'Units Sold' }, margin: { t: 40, b: 40, l: 60, r: 20 } };
-            const config = { responsive: true, displayModeBar: false };
-            Plotly.newPlot('sales-chart-container', [trace], layout, config);
         }
 
         function renderPrice(data) {
