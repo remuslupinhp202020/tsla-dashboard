@@ -376,3 +376,36 @@
                     grid.appendChild(card);
                 });
                 yearSec.appendChild(grid); container.appendChild(yearSec);
+            });
+        }
+
+        function renderNews(data) {
+            const container = document.getElementById('app-news');
+            container.innerHTML = '';
+            if (data.length === 0) { container.innerHTML = '<div style="grid-column: 1/-1; text-align:center;">No news articles found.</div>'; return; }
+            data.forEach(item => {
+                const card = document.createElement('div'); card.className = 'news-card';
+                const cleanTitle = item.title.replace(/<[^>]*>?/gm, ''); 
+                const d = new Date(item.date);
+                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+                card.innerHTML = `<div class="news-source">${item.source} • ${dateStr}</div><div class="news-title">${cleanTitle}</div><a href="${item.link}" target="_blank" class="read-btn">Read Article →</a>`;
+                container.appendChild(card);
+            });
+        }
+
+        function renderChart(data) {
+            if (!data || data.length === 0) return;
+            const chartData = [...data].sort((a, b) => new Date(a.Date) - new Date(b.Date));
+            const xValues = chartData.map(d => d.Date);
+            const yValues = chartData.map(d => d.Close);
+            const isMobile = window.innerWidth < 600;
+            const trace = { x: xValues, y: yValues, type: 'scatter', mode: 'lines', line: { color: '#27ae60', width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(39, 174, 96, 0.1)' };
+            const layout = { title: false, autosize: true, xaxis: { type: 'date', rangeselector: { x: 0, y: isMobile ? 1.2 : 1.1, font: { size: isMobile ? 10 : 12 }, buttons: [{count: 1, label: '1M', step: 'month', stepmode: 'backward'}, {count: 3, label: '3M', step: 'month', stepmode: 'backward'}, {count: 6, label: '6M', step: 'month', stepmode: 'backward'}, {count: 1, label: 'YTD', step: 'year', stepmode: 'todate'}, {count: 1, label: '1Y', step: 'year', stepmode: 'backward'}, {step: 'all', label: 'MAX'}] } }, yaxis: { fixedrange: false, title: 'Price ($)' }, margin: { t: isMobile ? 60 : 50, r: 20, l: 40, b: 40 } };
+            const config = { responsive: true, displayModeBar: false };
+            Plotly.newPlot('chart-container', [trace], layout, config);
+        }
+        
+        window.onresize = function() { if (localStorage.getItem('activeTab') === 'graph') { renderChart(globalPriceData); } };
+    </script>
+</body>
+</html>
